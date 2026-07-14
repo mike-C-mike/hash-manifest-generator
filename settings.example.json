@@ -2,6 +2,10 @@
   "department_name": "Example Police Department",
   "unit_name": "Digital Evidence Unit",
   "default_technician": "Example Technician",
+  "technicians": [
+    "Example Technician",
+    "Second Example Technician"
+  ],
   "appearance": {
     "theme": "dark"
   },

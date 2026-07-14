@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 APP_NAME = "Hash Manifest Generator"
-APP_VERSION = "0.1.2"
+APP_VERSION = "0.3.0"
 
 
 def get_base_dir():
@@ -28,6 +28,7 @@ DEFAULT_SETTINGS = {
     "department_name": "",
     "unit_name": "",
     "default_technician": "",
+    "technicians": [],
     "appearance": {
         "theme": "dark"
     },
@@ -70,6 +71,45 @@ def deep_merge(default, loaded):
     return result
 
 
+def normalize_settings(settings):
+    """
+    Normalizes settings after loading.
+
+    This keeps older settings.json files compatible and prevents duplicate technician values.
+    """
+    technicians = settings.get("technicians", [])
+
+    if not isinstance(technicians, list):
+        technicians = []
+
+    cleaned_technicians = []
+    seen = set()
+
+    for technician in technicians:
+        technician = str(technician).strip()
+
+        if not technician:
+            continue
+
+        key = technician.lower()
+
+        if key not in seen:
+            cleaned_technicians.append(technician)
+            seen.add(key)
+
+    default_technician = settings.get("default_technician", "").strip()
+
+    if default_technician:
+        key = default_technician.lower()
+
+        if key not in seen:
+            cleaned_technicians.insert(0, default_technician)
+
+    settings["technicians"] = cleaned_technicians
+
+    return settings
+
+
 def load_or_create_settings():
     """
     Loads settings.json if it exists.
@@ -84,7 +124,8 @@ def load_or_create_settings():
         with SETTINGS_PATH.open("r", encoding="utf-8") as f:
             loaded = json.load(f)
 
-        return deep_merge(DEFAULT_SETTINGS, loaded)
+        settings = deep_merge(DEFAULT_SETTINGS, loaded)
+        return normalize_settings(settings)
 
     except (json.JSONDecodeError, OSError):
         return DEFAULT_SETTINGS.copy()
@@ -94,6 +135,8 @@ def save_settings(settings):
     """
     Saves settings.json next to the executable or source files.
     """
+    settings = normalize_settings(settings)
+
     with SETTINGS_PATH.open("w", encoding="utf-8") as f:
         json.dump(settings, f, indent=2)
 

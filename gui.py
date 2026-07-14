@@ -292,7 +292,7 @@ class HashManifestApp:
 
         self.add_labeled_entry(case_frame, "Case Number", self.case_number_var, 0)
         self.add_labeled_entry(case_frame, "Agency Case Number", self.agency_case_number_var, 1)
-        self.add_labeled_entry(case_frame, "Technician", self.technician_var, 2)
+        self.add_labeled_technician_combo(case_frame, "Technician", self.technician_var, 2)
         self.add_labeled_entry(case_frame, "Source Description", self.source_description_var, 3)
 
         notes_label = ttk.Label(case_frame, text="Manifest Notes")
@@ -413,7 +413,47 @@ class HashManifestApp:
         entry = ttk.Entry(parent, textvariable=variable)
         entry.grid(row=row, column=1, sticky="ew", pady=4)
 
+    def add_labeled_technician_combo(self, parent, label_text, variable, row):
+        label = ttk.Label(parent, text=label_text)
+        label.grid(row=row, column=0, sticky="w", pady=4)
+
+        self.technician_combo = ttk.Combobox(
+            parent,
+            textvariable=variable,
+            values=self.get_technician_values(),
+            state="normal"
+        )
+        self.technician_combo.grid(row=row, column=1, sticky="ew", pady=4)
+
+    def get_technician_values(self):
+        technicians = self.settings.get("technicians", [])
+
+        if not isinstance(technicians, list):
+            return []
+
+        cleaned = []
+        seen = set()
+
+        for technician in technicians:
+            technician = str(technician).strip()
+
+            if not technician:
+                continue
+
+            key = technician.lower()
+
+            if key not in seen:
+                cleaned.append(technician)
+                seen.add(key)
+
+        return cleaned
+
+    def refresh_technician_dropdown(self):
+        if hasattr(self, "technician_combo"):
+            self.technician_combo["values"] = self.get_technician_values()
+
     def load_defaults_from_settings(self):
+        self.refresh_technician_dropdown()
         self.technician_var.set(self.settings.get("default_technician", ""))
 
         hash_defaults = self.settings.get("hash_defaults", {})
@@ -883,7 +923,7 @@ class SettingsWindow:
 
         self.window = tk.Toplevel(app.root)
         self.window.title("Settings")
-        self.window.geometry("740x590")
+        self.window.geometry("760x640")
         self.window.transient(app.root)
         self.window.grab_set()
 
@@ -938,7 +978,7 @@ class SettingsWindow:
             "Light mode is provided for readability, printing environments, and user preference."
         )
 
-        ttk.Label(frame, text=note, wraplength=660).grid(
+        ttk.Label(frame, text=note, wraplength=680).grid(
             row=1,
             column=0,
             columnspan=2,
@@ -950,6 +990,7 @@ class SettingsWindow:
         frame = ttk.Frame(notebook, padding=10)
         notebook.add(frame, text="Department")
         frame.columnconfigure(1, weight=1)
+        frame.rowconfigure(4, weight=1)
 
         self.department_name_var = tk.StringVar()
         self.unit_name_var = tk.StringVar()
@@ -957,7 +998,34 @@ class SettingsWindow:
 
         self.add_labeled_entry(frame, "Department / Agency Name", self.department_name_var, 0)
         self.add_labeled_entry(frame, "Unit Name", self.unit_name_var, 1)
-        self.add_labeled_entry(frame, "Default Technician", self.default_technician_var, 2)
+
+        ttk.Label(frame, text="Default Technician").grid(row=2, column=0, sticky="w", pady=5)
+
+        self.default_technician_combo = ttk.Combobox(
+            frame,
+            textvariable=self.default_technician_var,
+            values=[],
+            state="normal"
+        )
+        self.default_technician_combo.grid(row=2, column=1, sticky="ew", pady=5)
+
+        ttk.Label(frame, text="Technician List").grid(row=3, column=0, sticky="nw", pady=5)
+
+        self.technicians_text = tk.Text(frame, height=12, width=50)
+        self.technicians_text.grid(row=3, column=1, sticky="nsew", pady=5)
+        self.app.style_text_widget(self.technicians_text)
+
+        note = (
+            "Enter one technician per line. These names will appear in the Technician dropdown "
+            "on the main screen. The dropdown also allows manual entry."
+        )
+        ttk.Label(frame, text=note, wraplength=680).grid(
+            row=4,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(12, 0)
+        )
 
     def build_output_tab(self, notebook):
         frame = ttk.Frame(notebook, padding=10)
@@ -991,10 +1059,10 @@ class SettingsWindow:
         note = (
             "Recommended format: PNG\n"
             "Supported formats: PNG, JPG, JPEG\n\n"
-            "The image path is stored for future report generation support."
+            "The image path is stored for report generation support."
         )
 
-        ttk.Label(frame, text=note, wraplength=660).grid(
+        ttk.Label(frame, text=note, wraplength=680).grid(
             row=1,
             column=0,
             columnspan=4,
@@ -1038,7 +1106,7 @@ class SettingsWindow:
             "Hashing Explanation explains what hash values are."
         )
 
-        ttk.Label(frame, text=note, wraplength=660).grid(row=6, column=0, sticky="w", pady=(12, 0))
+        ttk.Label(frame, text=note, wraplength=680).grid(row=6, column=0, sticky="w", pady=(12, 0))
 
     def add_labeled_entry(self, parent, label_text, variable, row):
         label = ttk.Label(parent, text=label_text)
@@ -1052,12 +1120,21 @@ class SettingsWindow:
         output_paths = self.settings.get("output_paths", {})
         report_branding = self.settings.get("report_branding", {})
         hash_defaults = self.settings.get("hash_defaults", {})
+        technicians = self.settings.get("technicians", [])
+
+        if not isinstance(technicians, list):
+            technicians = []
 
         self.theme_var.set(appearance.get("theme", "dark"))
 
         self.department_name_var.set(self.settings.get("department_name", ""))
         self.unit_name_var.set(self.settings.get("unit_name", ""))
         self.default_technician_var.set(self.settings.get("default_technician", ""))
+
+        self.default_technician_combo["values"] = technicians
+
+        self.technicians_text.delete("1.0", "end")
+        self.technicians_text.insert("1.0", "\n".join(technicians))
 
         self.base_output_dir_var.set(output_paths.get("base_output_dir", ""))
         self.reports_folder_name_var.set(output_paths.get("reports_folder_name", "output"))
@@ -1070,6 +1147,33 @@ class SettingsWindow:
         self.default_sha256_var.set(bool(hash_defaults.get("sha256", True)))
         self.default_include_explanation_var.set(bool(hash_defaults.get("include_hashing_explanation", True)))
         self.default_include_generation_method_var.set(bool(hash_defaults.get("include_hash_generation_method", True)))
+
+    def get_technicians_from_text(self):
+        raw_text = self.technicians_text.get("1.0", "end").strip()
+        technicians = []
+        seen = set()
+
+        for line in raw_text.splitlines():
+            technician = line.strip()
+
+            if not technician:
+                continue
+
+            key = technician.lower()
+
+            if key not in seen:
+                technicians.append(technician)
+                seen.add(key)
+
+        default_technician = self.default_technician_var.get().strip()
+
+        if default_technician:
+            key = default_technician.lower()
+
+            if key not in seen:
+                technicians.insert(0, default_technician)
+
+        return technicians
 
     def browse_base_output_dir(self):
         folder = filedialog.askdirectory(title="Select Base Output Folder")
@@ -1092,6 +1196,8 @@ class SettingsWindow:
             self.patch_image_path_var.set(file_path)
 
     def save(self):
+        technicians = self.get_technicians_from_text()
+
         self.settings["appearance"] = {
             "theme": self.theme_var.get()
         }
@@ -1099,6 +1205,7 @@ class SettingsWindow:
         self.settings["department_name"] = self.department_name_var.get().strip()
         self.settings["unit_name"] = self.unit_name_var.get().strip()
         self.settings["default_technician"] = self.default_technician_var.get().strip()
+        self.settings["technicians"] = technicians
 
         self.settings["output_paths"] = {
             "base_output_dir": self.base_output_dir_var.get().strip(),
