@@ -2,17 +2,20 @@
 # Run from the project root.
 
 param(
-    [string]$Version = "0.8.0"
+    [string]$Version = "0.9.0"
 )
 
 $ErrorActionPreference = "Stop"
 
 $AppName = "HashManifestGenerator"
+$ExeName = "$AppName.exe"
+
 $ReleaseRoot = "release"
 $DistRoot = "dist"
 $BuildRoot = "build"
 $ReleaseFolder = Join-Path $ReleaseRoot "$AppName-v$Version"
 $ZipPath = Join-Path $ReleaseRoot "$AppName-v$Version.zip"
+$ChecksumPath = Join-Path $ReleaseRoot "$AppName-v$Version-SHA256SUMS.txt"
 
 Write-Host "Hash Manifest Generator release build" -ForegroundColor Cyan
 Write-Host "Version: $Version" -ForegroundColor Cyan
@@ -35,6 +38,10 @@ if (Test-Path $ZipPath) {
     Remove-Item $ZipPath -Force
 }
 
+if (Test-Path $ChecksumPath) {
+    Remove-Item $ChecksumPath -Force
+}
+
 New-Item -ItemType Directory -Path $ReleaseFolder | Out-Null
 
 Write-Host "`nInstalling runtime requirements..." -ForegroundColor Yellow
@@ -46,7 +53,7 @@ py -m pip install -r requirements-build.txt
 Write-Host "`nRunning PyInstaller..." -ForegroundColor Yellow
 py -m PyInstaller .\HashManifestGenerator.spec --clean --noconfirm
 
-$ExePath = Join-Path $DistRoot "$AppName.exe"
+$ExePath = Join-Path $DistRoot $ExeName
 
 if (!(Test-Path $ExePath)) {
     throw "Expected executable was not created: $ExePath"
@@ -56,20 +63,22 @@ Write-Host "`nCopying release files..." -ForegroundColor Yellow
 
 Copy-Item $ExePath $ReleaseFolder
 
-if (Test-Path ".\settings.example.json") {
-    Copy-Item ".\settings.example.json" $ReleaseFolder
-}
+$DocsToCopy = @(
+    "README.md",
+    "BUILD.md",
+    "DEPENDENCIES.md",
+    "KNOWN_LIMITATIONS.md",
+    "RELEASE_CHECKLIST.md",
+    "RELEASE_NOTES.md",
+    "UNSIGNED_WINDOWS_NOTICE.md",
+    "settings.example.json",
+    "LICENSE"
+)
 
-if (Test-Path ".\README.md") {
-    Copy-Item ".\README.md" $ReleaseFolder
-}
-
-if (Test-Path ".\DEPENDENCIES.md") {
-    Copy-Item ".\DEPENDENCIES.md" $ReleaseFolder
-}
-
-if (Test-Path ".\KNOWN_LIMITATIONS.md") {
-    Copy-Item ".\KNOWN_LIMITATIONS.md" $ReleaseFolder
+foreach ($Doc in $DocsToCopy) {
+    if (Test-Path ".\$Doc") {
+        Copy-Item ".\$Doc" $ReleaseFolder
+    }
 }
 
 if (!(Test-Path (Join-Path $ReleaseFolder "output"))) {
@@ -83,6 +92,24 @@ if (!(Test-Path (Join-Path $ReleaseFolder "saved_manifests"))) {
 Write-Host "`nCreating ZIP..." -ForegroundColor Yellow
 Compress-Archive -Path "$ReleaseFolder\*" -DestinationPath $ZipPath -Force
 
+Write-Host "`nCreating SHA-256 checksums..." -ForegroundColor Yellow
+
+$ReleaseExePath = Join-Path $ReleaseFolder $ExeName
+
+$ExeHash = Get-FileHash -Path $ReleaseExePath -Algorithm SHA256
+$ZipHash = Get-FileHash -Path $ZipPath -Algorithm SHA256
+
+$ChecksumLines = @(
+    "# Hash Manifest Generator v$Version SHA-256 Checksums",
+    "",
+    "$($ExeHash.Hash)  $ExeName",
+    "$($ZipHash.Hash)  $AppName-v$Version.zip"
+)
+
+$ChecksumLines | Set-Content -Path $ChecksumPath -Encoding UTF8
+Copy-Item $ChecksumPath $ReleaseFolder
+
 Write-Host "`nRelease build complete." -ForegroundColor Green
-Write-Host "Folder: $ReleaseFolder"
-Write-Host "ZIP:    $ZipPath"
+Write-Host "Folder:    $ReleaseFolder"
+Write-Host "ZIP:       $ZipPath"
+Write-Host "Checksums: $ChecksumPath"

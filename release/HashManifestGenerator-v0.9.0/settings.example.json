@@ -1,0 +1,30 @@
+{
+  "department_name": "Example Police Department",
+  "unit_name": "Digital Evidence Unit",
+  "default_technician": "Example Technician",
+  "technicians": [
+    "Example Technician",
+    "Second Example Technician"
+  ],
+  "appearance": {
+    "theme": "dark"
+  },
+  "output_paths": {
+    "base_output_dir": "",
+    "reports_folder_name": "output",
+    "saved_manifests_folder_name": "saved_manifests"
+  },
+  "report_branding": {
+    "patch_image_path": ""
+  },
+  "hash_defaults": {
+    "md5": true,
+    "sha1": false,
+    "sha256": true,
+    "include_hashing_explanation": true,
+    "include_hash_generation_method": true
+  },
+  "report_defaults": {
+    "include_signature_block": true
+  }
+}

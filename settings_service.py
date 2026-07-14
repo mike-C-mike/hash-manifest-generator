@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 APP_NAME = "Hash Manifest Generator"
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.9.0"
 
 
 def get_base_dir():
