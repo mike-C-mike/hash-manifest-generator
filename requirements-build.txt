@@ -1,0 +1,4 @@
+# Hash Manifest Generator build dependencies
+# These are used to package the app. They are not required to run the source code directly.
+
+pyinstaller
