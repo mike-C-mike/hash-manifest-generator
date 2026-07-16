@@ -1,4 +1,6 @@
 {
+  "suite_name": "ByteCase",
+  "publisher": "Forensics Byte",
   "department_name": "Example Police Department",
   "unit_name": "Digital Evidence Unit",
   "default_technician": "Example Technician",
@@ -7,12 +9,11 @@
     "Second Example Technician"
   ],
   "appearance": {
-    "theme": "dark"
+    "theme": "system"
   },
   "output_paths": {
     "base_output_dir": "",
-    "reports_folder_name": "output",
-    "saved_manifests_folder_name": "saved_manifests"
+    "use_shared_bytecase_root": true
   },
   "report_branding": {
     "patch_image_path": ""

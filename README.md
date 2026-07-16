@@ -1,17 +1,21 @@
-# Hash Manifest Generator
+# ByteCase Verify
 
-**Hash Manifest Generator** is a Windows-friendly forensic utility for creating file-level hash manifests, verifying files against prior manifests, and comparing saved manifest files.
+**ByteCase Verify**
+
+**ByteCase Verify** is a Windows-friendly forensic utility for creating file-level hash manifests, verifying files against prior manifests, and comparing saved manifest files.
 
 It is designed for digital evidence, incident response, administrative evidence handling, and other workflows where a user needs a clear record of file names, paths, sizes, timestamps, and hash values.
 
-Hash Manifest Generator is part of the broader **Forensics Byte** toolset.
+ByteCase Verify is part of the **ByteCase** toolset by **Forensics Byte**.
+
+Product domain: `byte-case.com`.
 
 ---
 
 ## Current Version
 
 ```text
-v0.9.0 - Pre-Release Candidate
+v0.9.1 - ByteCase Branding / Theme Update
 ```
 
 This project is currently in a **pre-1.0 release track**. A v1.0 stable release is being held until Microsoft code signing options are evaluated.
@@ -38,7 +42,7 @@ UNSIGNED_WINDOWS_NOTICE.md
 
 ## What This Tool Does
 
-Hash Manifest Generator helps users create structured, readable, and reusable hash documentation for selected files and folders.
+ByteCase Verify helps users create structured, readable, and reusable hash documentation for selected files and folders.
 
 The application can:
 
@@ -53,13 +57,13 @@ The application can:
 - Export reports in TXT, CSV, DOCX, XLSX, and JSON formats.
 - Store agency, unit, technician, output folder, branding, and report defaults.
 - Include an optional report signature block.
-- Use dark or light theme.
+- Use the shared ByteCase visual theme with Dark, Light, and System Default modes.
 
 ---
 
 ## What This Tool Does Not Do
 
-Hash Manifest Generator is **not** a forensic imaging tool.
+ByteCase Verify is **not** a forensic imaging tool.
 
 It does not:
 
@@ -190,7 +194,7 @@ JSON
 
 ## Supported Hash Algorithms
 
-Hash Manifest Generator supports:
+ByteCase Verify supports:
 
 - MD5
 - SHA-1
@@ -276,9 +280,11 @@ The Settings window supports:
 - Default hash algorithm selections
 - Default report explanation settings
 - Optional signature block default
-- Dark/light theme
+- Dark, Light, and System Default theme
 
 Settings are stored in a local `settings.json` file.
+
+By default, output is written under `C:\Users\<user>\ByteCase\<case_number>\verify\`. A custom ByteCase Output Root may be selected in Settings. When a custom root is selected, ByteCase creates case folders directly inside that location.
 
 When running from source, `settings.json` is created near the Python files.
 
@@ -304,8 +310,9 @@ HashManifestGenerator-v0.9.0/
   UNSIGNED_WINDOWS_NOTICE.md
   settings.example.json
   HashManifestGenerator-v0.9.0-SHA256SUMS.txt
-  output/
-  saved_manifests/
+  ByteCase/<case_number>/verify/manifests/
+  ByteCase/<case_number>/verify/verifications/
+  ByteCase/<case_number>/verify/comparisons/
 ```
 
 The top-level `release/` folder should also contain:
@@ -454,7 +461,7 @@ Do not label this as v1.0 until code signing and final release expectations are 
 
 ## Project Status
 
-Hash Manifest Generator is currently a public pre-1.0 tool.
+ByteCase Verify is currently a public pre-1.0 tool.
 
 Planned before a future v1.0 release:
 

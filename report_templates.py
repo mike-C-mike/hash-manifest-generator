@@ -1,4 +1,4 @@
-HASH_GENERATION_METHOD = """Hash values in this manifest were calculated by Hash Manifest Generator using Python's built-in hashlib library. Files were opened in binary read mode and processed in chunks. The selected hash algorithms were updated during the same file read process.
+HASH_GENERATION_METHOD = """Hash values in this manifest were calculated by ByteCase Verify using Python's built-in hashlib library. Files were opened in binary read mode and processed in chunks. The selected hash algorithms were updated during the same file read process.
 
 No external command-line hashing utility, PowerShell hashing command, CertUtil command, or third-party hashing executable was used by this application to generate the listed hash values."""
 

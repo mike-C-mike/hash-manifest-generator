@@ -18,10 +18,25 @@ from hash_core import (
 )
 from settings_service import (
     APP_NAME,
+    APP_SUBTITLE,
     APP_VERSION,
+    DEFAULT_ROOT_FOLDER_NAME,
+    PRODUCT_DOMAIN,
+    PUBLISHER_NAME,
+    SUITE_NAME,
+    TOOL_FOLDER_NAME,
     ensure_directories,
+    get_default_output_root,
     load_or_create_settings,
     save_settings
+)
+from bytecase_theme import (
+    THEME_DISPLAY_NAMES,
+    apply_theme as apply_bytecase_theme,
+    configure_toplevel,
+    display_theme_preference,
+    style_text_widget as style_bytecase_text_widget,
+    theme_preference_from_display,
 )
 from validators import (
     format_bytes,
@@ -40,7 +55,7 @@ from verification_core import (
 class HashManifestApp:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"{APP_NAME} v{APP_VERSION}")
+        self.root.title(f"{APP_NAME} - {APP_SUBTITLE} v{APP_VERSION}")
         self.root.geometry("1280x820")
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -79,79 +94,30 @@ class HashManifestApp:
         self.root.destroy()
 
     def apply_theme(self):
-        theme = self.settings.get("appearance", {}).get("theme", "dark")
-        style = ttk.Style()
+        self.theme_state = apply_bytecase_theme(self.root, self.settings)
+        self.theme_colors = self.theme_state["colors"]
+
+    def refresh_classic_widget_themes(self, widget=None):
+        if widget is None:
+            widget = self.root
+
+        colors = getattr(self, "theme_colors", {})
+        if not colors:
+            return
 
         try:
-            style.theme_use("clam")
+            if isinstance(widget, (tk.Tk, tk.Toplevel)):
+                widget.configure(bg=colors["app_background"])
+            elif isinstance(widget, tk.Text):
+                self.style_text_widget(widget)
         except tk.TclError:
             pass
 
-        if theme == "light":
-            colors = {
-                "bg": "#f5f5f5",
-                "text": "#111111",
-                "muted": "#444444",
-                "accent": "#b8860b",
-                "button": "#e6e6e6",
-                "button_text": "#111111",
-                "field": "#ffffff",
-                "field_text": "#111111",
-                "tree_bg": "#ffffff",
-                "tree_text": "#111111",
-                "heading_bg": "#e8e8e8",
-                "border": "#c0c0c0"
-            }
-        else:
-            colors = {
-                "bg": "#111111",
-                "text": "#f2f2f2",
-                "muted": "#c0c0c0",
-                "accent": "#d4af37",
-                "button": "#2a2a2a",
-                "button_text": "#f2f2f2",
-                "field": "#202020",
-                "field_text": "#f2f2f2",
-                "tree_bg": "#161616",
-                "tree_text": "#f2f2f2",
-                "heading_bg": "#2a2a2a",
-                "border": "#3a3a3a"
-            }
-
-        self.theme_colors = colors
-        self.root.configure(bg=colors["bg"])
-
-        style.configure(".", background=colors["bg"], foreground=colors["text"], fieldbackground=colors["field"], font=("Segoe UI", 10))
-        style.configure("TFrame", background=colors["bg"])
-        style.configure("TLabel", background=colors["bg"], foreground=colors["text"])
-        style.configure("Title.TLabel", background=colors["bg"], foreground=colors["accent"], font=("Segoe UI", 16, "bold"))
-        style.configure("Muted.TLabel", background=colors["bg"], foreground=colors["muted"])
-        style.configure("TLabelframe", background=colors["bg"], foreground=colors["accent"], bordercolor=colors["border"])
-        style.configure("TLabelframe.Label", background=colors["bg"], foreground=colors["accent"], font=("Segoe UI", 10, "bold"))
-
-        style.configure("TButton", background=colors["button"], foreground=colors["button_text"], padding=6, borderwidth=1)
-        style.map(
-            "TButton",
-            background=[("active", colors["accent"]), ("pressed", colors["accent"]), ("disabled", colors["button"])],
-            foreground=[("active", "#111111"), ("pressed", "#111111"), ("disabled", colors["muted"])]
-        )
-
-        style.configure("TCheckbutton", background=colors["bg"], foreground=colors["text"])
-        style.map("TCheckbutton", background=[("active", colors["bg"])], foreground=[("active", colors["accent"])])
-
-        style.configure("TEntry", fieldbackground=colors["field"], foreground=colors["field_text"], insertcolor=colors["accent"])
-        style.configure("TCombobox", fieldbackground=colors["field"], background=colors["button"], foreground=colors["field_text"], arrowcolor=colors["accent"])
-        style.map("TCombobox", fieldbackground=[("readonly", colors["field"])], foreground=[("readonly", colors["field_text"])], background=[("readonly", colors["button"])])
-
-        style.configure("Treeview", background=colors["tree_bg"], fieldbackground=colors["tree_bg"], foreground=colors["tree_text"], rowheight=24)
-        style.configure("Treeview.Heading", background=colors["heading_bg"], foreground=colors["accent"], font=("Segoe UI", 10, "bold"))
-        style.map("Treeview", background=[("selected", colors["accent"])], foreground=[("selected", "#111111")])
-
-        style.configure("Horizontal.TProgressbar", troughcolor=colors["field"], background=colors["accent"], bordercolor=colors["field"], lightcolor=colors["accent"], darkcolor=colors["accent"])
-        style.configure("TNotebook", background=colors["bg"], borderwidth=0)
-        style.configure("TNotebook.Tab", background=colors["button"], foreground=colors["text"], padding=(10, 5))
-        style.map("TNotebook.Tab", background=[("selected", colors["accent"])], foreground=[("selected", "#111111")])
-        style.configure("TSeparator", background=colors["border"])
+        try:
+            for child in widget.winfo_children():
+                self.refresh_classic_widget_themes(child)
+        except tk.TclError:
+            pass
 
     def style_text_widget(self, widget):
         colors = getattr(self, "theme_colors", None)
@@ -159,15 +125,7 @@ class HashManifestApp:
         if not colors:
             return
 
-        widget.configure(
-            background=colors["field"],
-            foreground=colors["field_text"],
-            insertbackground=colors["accent"],
-            selectbackground=colors["accent"],
-            selectforeground="#111111",
-            relief="solid",
-            borderwidth=1
-        )
+        style_bytecase_text_widget(widget, colors)
 
     def build_gui(self):
         self.root.columnconfigure(0, weight=1)
@@ -178,12 +136,18 @@ class HashManifestApp:
         top_frame.columnconfigure(0, weight=1)
 
         ttk.Label(top_frame, text=f"{APP_NAME} v{APP_VERSION}", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            top_frame,
+            text=f"{APP_SUBTITLE} | Part of {SUITE_NAME} by {PUBLISHER_NAME}",
+            style="Subtitle.TLabel"
+        ).grid(row=1, column=0, sticky="w")
 
         button_frame = ttk.Frame(top_frame)
         button_frame.grid(row=0, column=1, sticky="e")
 
         ttk.Button(button_frame, text="Settings", command=self.open_settings_window).grid(row=0, column=0, padx=4)
-        ttk.Button(button_frame, text="Open Output Folder", command=self.open_output_folder).grid(row=0, column=1, padx=4)
+        ttk.Button(button_frame, text="About", command=self.open_about_window).grid(row=0, column=1, padx=4)
+        ttk.Button(button_frame, text="Open Output Folder", command=self.open_output_folder).grid(row=0, column=2, padx=4)
 
         main_pane = ttk.PanedWindow(self.root, orient=tk.VERTICAL)
         main_pane.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
@@ -499,7 +463,7 @@ class HashManifestApp:
 
         colors = getattr(self, "theme_colors", {})
         if colors:
-            window.configure(bg=colors["bg"])
+            window.configure(bg=colors["app_background"])
 
         frame = ttk.Frame(window, padding=10)
         frame.pack(fill="both", expand=True)
@@ -882,13 +846,22 @@ class HashManifestApp:
         self.update_selection_summary()
 
     def open_output_folder(self):
-        paths = ensure_directories(self.settings)
-        output_dir = paths["reports_dir"]
+        case_number = self.case_number_var.get().strip() if hasattr(self, "case_number_var") else ""
+
+        if case_number:
+            paths = ensure_directories(self.settings, case_number=case_number)
+            output_dir = paths["tool_dir"]
+        else:
+            paths = ensure_directories(self.settings, case_number="NO_CASE")
+            output_dir = paths["root_dir"]
 
         try:
             os.startfile(output_dir)
         except OSError as e:
             messagebox.showerror("Open Output Folder Error", str(e))
+
+    def open_about_window(self):
+        AboutWindow(self)
 
     def open_settings_window(self):
         SettingsWindow(self)
@@ -896,10 +869,8 @@ class HashManifestApp:
     def refresh_after_settings_save(self):
         self.settings = load_or_create_settings()
         self.apply_theme()
+        self.refresh_classic_widget_themes()
         self.load_defaults_from_settings()
-
-        if hasattr(self, "notes_text"):
-            self.style_text_widget(self.notes_text)
 
 
 class ReviewWindow:
@@ -915,7 +886,7 @@ class ReviewWindow:
 
         colors = getattr(app, "theme_colors", {})
         if colors:
-            self.window.configure(bg=colors["bg"])
+            self.window.configure(bg=colors["app_background"])
 
         self.build_window(warnings)
 
@@ -955,7 +926,7 @@ class VerificationReviewWindow:
 
         colors = getattr(app, "theme_colors", {})
         if colors:
-            self.window.configure(bg=colors["bg"])
+            self.window.configure(bg=colors["app_background"])
 
         self.build_window()
 
@@ -1025,7 +996,7 @@ class CompareWindow:
 
         colors = getattr(app, "theme_colors", {})
         if colors:
-            self.window.configure(bg=colors["bg"])
+            self.window.configure(bg=colors["app_background"])
 
         self.build_window()
 
@@ -1137,7 +1108,7 @@ class CompareReviewWindow:
 
         colors = getattr(app, "theme_colors", {})
         if colors:
-            self.window.configure(bg=colors["bg"])
+            self.window.configure(bg=colors["app_background"])
 
         self.build_window()
 
@@ -1198,6 +1169,95 @@ class CompareReviewWindow:
         ttk.Button(button_frame, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
 
 
+class AboutWindow:
+    def __init__(self, app):
+        self.app = app
+
+        self.window = tk.Toplevel(app.root)
+        self.window.title(f"About {APP_NAME}")
+        self.window.geometry("820x640")
+        self.window.transient(app.root)
+        self.window.grab_set()
+
+        colors = getattr(app, "theme_colors", {})
+        if colors:
+            configure_toplevel(self.window, colors)
+
+        self.build_window()
+
+    def build_window(self):
+        frame = ttk.Frame(self.window, padding=14)
+        frame.pack(fill="both", expand=True)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=1)
+
+        ttk.Label(frame, text=f"{APP_NAME} v{APP_VERSION}", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+
+        about_text = tk.Text(frame, wrap="word", height=24)
+        about_text.grid(row=1, column=0, sticky="nsew", pady=(10, 10))
+        self.app.style_text_widget(about_text)
+
+        content = f"""BYTECASE VERIFY
+
+{APP_SUBTITLE}
+
+Part of the {SUITE_NAME} toolset by {PUBLISHER_NAME}
+Product domain: {PRODUCT_DOMAIN}
+
+PURPOSE
+
+ByteCase Verify helps examiners create saved hash manifests, generate reportable integrity documentation, and later rehash files to compare against prior manifests.
+
+The tool supports three core workflows:
+- Generate a new hash manifest from selected files or folders
+- Verify current files against a prior manifest JSON
+- Compare two saved manifest JSON files
+
+PLATFORM IDEOLOGY
+
+ByteCase tools are built around a simple principle:
+
+Bake in best practices, structure, and guidance while preserving enough flexibility for agencies to customize their workflow.
+
+ByteCase Verify is designed for repeatable file integrity documentation. It helps preserve the ability to return to a saved manifest months later, rehash current files, compare results, and generate clear integrity documentation for review or court preparation.
+
+WHAT THIS TOOL DOES NOT DO
+
+ByteCase Verify does not acquire physical drives, image media, control write blockers, parse evidence, determine evidentiary relevance, prove file origin, interpret file contents, identify user activity, or replace examiner review.
+
+Matching hashes support file integrity comparison. They do not explain what a file means, where it came from, who created it, or whether it is relevant to an investigation.
+
+OUTPUT PHILOSOPHY
+
+Default root folder:
+{get_default_output_root()}
+
+Typical output structure:
+{DEFAULT_ROOT_FOLDER_NAME}/<case_number>/{TOOL_FOLDER_NAME}/
+
+ByteCase Verify separates outputs by workflow:
+- manifests/
+- verifications/
+- comparisons/
+
+ATTRIBUTION
+
+Created by Matt McBride.
+Published under the Forensics Byte brand.
+
+Suite: {SUITE_NAME}
+Tool: {APP_NAME}
+Domain: {PRODUCT_DOMAIN}
+"""
+
+        about_text.insert("1.0", content)
+        about_text.configure(state="disabled")
+
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(row=2, column=0, sticky="e")
+        ttk.Button(button_frame, text="Close", command=self.window.destroy).pack(side="right")
+
+
 class SettingsWindow:
     def __init__(self, app):
         self.app = app
@@ -1217,7 +1277,7 @@ class SettingsWindow:
         colors = getattr(self.app, "theme_colors", None)
 
         if colors:
-            self.window.configure(bg=colors["bg"])
+            self.window.configure(bg=colors["app_background"])
 
     def build_window(self):
         self.window.columnconfigure(0, weight=1)
@@ -1251,7 +1311,7 @@ class SettingsWindow:
         ttk.Combobox(
             frame,
             textvariable=self.theme_var,
-            values=["dark", "light"],
+            values=THEME_DISPLAY_NAMES,
             state="readonly"
         ).grid(row=0, column=1, sticky="ew", pady=5)
 
@@ -1296,16 +1356,25 @@ class SettingsWindow:
         frame.columnconfigure(1, weight=1)
 
         self.base_output_dir_var = tk.StringVar()
-        self.reports_folder_name_var = tk.StringVar()
-        self.saved_manifests_folder_name_var = tk.StringVar()
 
-        self.add_labeled_entry(frame, "Base Output Folder", self.base_output_dir_var, 0)
+        ttk.Label(frame, text="ByteCase Output Root").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Entry(frame, textvariable=self.base_output_dir_var).grid(row=0, column=1, sticky="ew", pady=5)
 
         ttk.Button(frame, text="Browse", command=self.browse_base_output_dir).grid(row=0, column=2, sticky="e", padx=4)
         ttk.Button(frame, text="Clear", command=lambda: self.base_output_dir_var.set("")).grid(row=0, column=3, sticky="e", padx=4)
 
-        self.add_labeled_entry(frame, "Reports Folder Name", self.reports_folder_name_var, 1)
-        self.add_labeled_entry(frame, "Saved Manifests Folder Name", self.saved_manifests_folder_name_var, 2)
+        helper_text = (
+            "Leave blank to use the default local ByteCase folder:\n"
+            f"{get_default_output_root()}\n\n"
+            "When a custom root is selected, ByteCase creates case folders directly inside that location:\n"
+            f"<custom root>\\<case_number>\\{TOOL_FOLDER_NAME}\\\n\n"
+            "ByteCase Verify separates outputs by mode under the verify folder:\n"
+            "manifests\\, verifications\\, and comparisons\\"
+        )
+
+        ttk.Label(frame, text=helper_text, style="Muted.TLabel", wraplength=680, justify="left").grid(
+            row=1, column=0, columnspan=4, sticky="w", pady=(14, 0)
+        )
 
     def build_branding_tab(self, notebook):
         frame = ttk.Frame(notebook, padding=10)
@@ -1382,7 +1451,7 @@ class SettingsWindow:
         if not isinstance(technicians, list):
             technicians = []
 
-        self.theme_var.set(appearance.get("theme", "dark"))
+        self.theme_var.set(display_theme_preference(appearance.get("theme", "system")))
 
         self.department_name_var.set(self.settings.get("department_name", ""))
         self.unit_name_var.set(self.settings.get("unit_name", ""))
@@ -1394,8 +1463,6 @@ class SettingsWindow:
         self.technicians_text.insert("1.0", "\n".join(technicians))
 
         self.base_output_dir_var.set(output_paths.get("base_output_dir", ""))
-        self.reports_folder_name_var.set(output_paths.get("reports_folder_name", "output"))
-        self.saved_manifests_folder_name_var.set(output_paths.get("saved_manifests_folder_name", "saved_manifests"))
 
         self.patch_image_path_var.set(report_branding.get("patch_image_path", ""))
 
@@ -1460,7 +1527,7 @@ class SettingsWindow:
         technicians = self.get_technicians_from_text()
 
         self.settings["appearance"] = {
-            "theme": self.theme_var.get()
+            "theme": theme_preference_from_display(self.theme_var.get())
         }
 
         self.settings["department_name"] = self.department_name_var.get().strip()
@@ -1470,8 +1537,7 @@ class SettingsWindow:
 
         self.settings["output_paths"] = {
             "base_output_dir": self.base_output_dir_var.get().strip(),
-            "reports_folder_name": self.reports_folder_name_var.get().strip() or "output",
-            "saved_manifests_folder_name": self.saved_manifests_folder_name_var.get().strip() or "saved_manifests"
+            "use_shared_bytecase_root": True
         }
 
         self.settings["report_branding"] = {
